@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script src="lib/codemirror.js"></script>
+  <link rel="stylesheet" href="lib/codemirror.css">
+  <script src="mode/javascript/javascript.js"></script>
+
+
+  <title>Alex Testing Center</title>
+
+  <style>
+
+    #chatBox{
+      height: 500px;
+      width: 300px;
+      border: 1px solid black;
+      overflow: auto;
+      background-color: green;
+      border-radius: 15px;
+    }
+
+    #hide_me{
+      display: none;
+    }
+
+    #hide_me_too {
+      /*display: none;*/
+    }
+
+  </style>
+
+</head>
+<body>
+
+<div>
+  <form id="name_Input">
+    <h1> Enter your Name </h1>
+    <input type="text" id="name" placeholder="enter name here">
+    <input type="submit">
+  </form>
+</div>
+
+<div class="row" id="hide_me">
+
+  <div class="col-md-4" style="left: 50px;">
+    <div id="chatBox"></div>
+    <form id="chat">
+      <input id="message">
+      <input type="submit">
+    </form>
+  </div>
+
+  <div class="col-md-8" style="height: 500px; width: 300px; overflow: auto; border: 1px solid black; left: 40px;">  
+    <h3> Connected Users </h3>
+      <div class="userList">
+      <!-- USERS GO HERE -->
+      </div>
+  </div>  
+
+<div>
+
+<div class ="row" id="hide_me_too">
+  <div class="col-md-6" style="left:0px;background: yellow; height: 500px;">
+    <h1> </h1>
+    <div id="privateChat"  data-chatID="" style="background:white; display: auto; height: 400px; overflow: auto; width: 300px; top: 20px; bottom: 5px; border-radius: 10px; border: 1px solid black; left: 10px;">
+    </div>
+
+
+    <form id="privateMessaging">
+      <input type="text" placeholder="message" id="p_message">
+      <input type="submit">
+    </form>
+    <button class="btn btn-sm btn-default" id="leave"> Leave Conversation </button>
+  </div>
+</div>
+
+<div class="row">
+
+  <div class="col-lg-10" style="height:500px; width: 400px; background: green;">
+  <div style="left: 0px;">
+    <form id="codeForm" >
+      <input size="35" type="text" placeholder="insert code here">
+      <input type="submit" value="Compile!">
+    </form>
+  </div>
+</div>
+
+
+
+<script src="/socket.io/socket.io.js"></script>
+<!-- <script src="../sockets.js"></script> -->
+
+
+<script>
+
+  var myCodeMirror = CodeMirror(document.body);
+
+  var socket = io.connect();
+  var $name_Form = $('#name_Input');
+  var $usersDiv = $('.userList');
+  var message = $('#message');
+  var $form = $('#chat');
+  var $box = $('#chatBox');
+  var name = "";
+  var $userClick = 'p#user-click';
+  var leavePrivate = $('#leave');
+  var privChat = $('#hide_me_too');
+  var $privateMessageForm = $('#privateMessaging');
+  var $privateChatBox = $('#privateChat');
+  var $code_Form = $('#codeForm');
+
+  $code_Form.keyup(function(e){
+    e.preventDefault();
+    var code = $(this).children().first().val();
+    socket.emit('receive input from code', code);
+  });
+
+  $usersDiv.on('click', $userClick, function(){
+    var userClickedName = $(this).text();
+    if (userClickedName === name){
+      return;
+    } 
+    privChat.children().children('h1').text('Private Chat with : ' + userClickedName);
+    privChat.show();
+    $privateMessageForm.submit(function(e){
+      e.preventDefault();
+      var Private_Message = $('#p_message');
+      socket.emit('send private message', Private_Message.val());
+      Private_Message.val('');
+    });
+  });
+
+  socket.on('new private message', function(data){
+    $privateChatBox.append("<b>" + data.user + ": </b>" + data.msg + "<br/>");
+  });
+
+  leavePrivate.click(function(){
+    privChat.hide();
+  }); 
+
+  $name_Form.on('submit', function(e){
+    e.preventDefault();
+    name = $('#name').val();
+    var bruh = $(this);
+    socket.emit('new user', name, function(data){
+      if (data === true){
+        $('#hide_me').show();
+        bruh.hide();
+        console.log('Welcome to the chat!');
+      } else {
+        console.log("Must enter a username!");
+      }
+    });
+  });
+
+  $form.on('submit', function(e){
+    e.preventDefault();
+    socket.emit('send message', message.val());
+    message.val('');
+  });
+
+  socket.on('usernames', function(data){ 
+    var html = "";
+    for (var i=0; i<data.length; i++){
+      html += "<p id='user-click'>" + data[i] + "<br>" + "</p>";
+    }
+    $usersDiv.html(html); 
+  })
+
+  socket.on('new message', function(data){
+    $box.append("<b>" + data.user + ": </b>" + data.msg + "<br/>")
+  });
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
